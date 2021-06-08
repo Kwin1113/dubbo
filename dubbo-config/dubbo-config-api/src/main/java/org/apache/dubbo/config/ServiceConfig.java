@@ -189,9 +189,11 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             bootstrap.init();
         }
 
+        // 检查并更新初始化配置字段
         checkAndUpdateSubConfigs();
 
         //init serviceMetadata
+        // 初始化service元数据
         serviceMetadata.setVersion(version);
         serviceMetadata.setGroup(group);
         serviceMetadata.setDefaultGroup(group);
@@ -199,6 +201,8 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         serviceMetadata.setServiceInterfaceName(getInterface());
         serviceMetadata.setTarget(getRef());
 
+        // 进行延迟暴露或立刻暴露
+        // 延迟暴露由线程池进行调度
         if (shouldDelay()) {
             DELAY_EXPORT_EXECUTOR.schedule(this::doExport, getDelay(), TimeUnit.MILLISECONDS);
         } else {
@@ -284,9 +288,11 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         if (StringUtils.isEmpty(path)) {
             path = interfaceName;
         }
+        // 暴露url
         doExportUrls();
 
         // dispatch a ServiceConfigExportedEvent since 2.7.4
+        // 发布一个事件信息，供日志记录和服务名称映射（注册中心查询）
         dispatch(new ServiceConfigExportedEvent(this));
     }
 
@@ -302,8 +308,10 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 serviceMetadata
         );
 
+        // 获取需要往上注册的注册中心URL
         List<URL> registryURLs = ConfigValidationUtils.loadRegistries(this, true);
 
+        // 遍历所有配置的协议，往所有注册中心上注册
         for (ProtocolConfig protocolConfig : protocols) {
             String pathKey = URL.buildKey(getContextPath(protocolConfig)
                     .map(p -> p + "/" + path)
@@ -312,12 +320,14 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             repository.registerService(pathKey, interfaceClass);
             // TODO, uncomment this line once service key is unified
             serviceMetadata.setServiceKey(pathKey);
+            // 通过1个指定的protocol配置暴露服务
             doExportUrlsFor1Protocol(protocolConfig, registryURLs);
         }
     }
 
     private void doExportUrlsFor1Protocol(ProtocolConfig protocolConfig, List<URL> registryURLs) {
         String name = protocolConfig.getName();
+        // 判断默认为dubbo协议
         if (StringUtils.isEmpty(name)) {
             name = DUBBO;
         }
@@ -418,11 +428,16 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         serviceMetadata.getAttachments().putAll(map);
 
         // export service
+        // 获取需要注册到注册中心上的"本机"host和port
+        // 解决例如容器编排等造成的地址问题
+        // 环境变量 -> java系统变量 -> 配置文件中的host属性 -> /etc/hosts -> 默认网络地址 -> 首个可用的网络地址
         String host = findConfigedHosts(protocolConfig, registryURLs, map);
+        // 环境变量 -> java系统变量 -> 配置文件中的port属性 -> 协议默认的端口
         Integer port = findConfigedPorts(protocolConfig, name, map);
         URL url = new URL(name, host, port, getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), map);
 
         // You can customize Configurator to append extra parameters
+        // 自定义额外配置
         if (ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
                 .hasExtension(url.getProtocol())) {
             url = ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)

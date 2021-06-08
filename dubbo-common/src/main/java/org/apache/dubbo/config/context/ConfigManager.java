@@ -350,7 +350,7 @@ public class ConfigManager extends LifecycleAdapter implements FrameworkExt {
     }
 
     /**
-     * In some scenario,  we may nee to add and remove ServiceConfig or ReferenceConfig dynamically.
+     * In some scenario,  we may need to add and remove ServiceConfig or ReferenceConfig dynamically.
      *
      * @param config the config instance to remove.
      */

@@ -501,10 +501,13 @@ public class DubboBootstrap extends GenericEventListener {
             return;
         }
 
+        // 初始化框架，ConfigManager/Environment/ServiceRepository
         ApplicationModel.initFrameworkExts();
 
+        // 启动配置中心
         startConfigCenter();
 
+        // 用注册中心代替配置中心
         useRegistryAsConfigCenterIfNecessary();
 
         startMetadataReport();
@@ -694,22 +697,28 @@ public class DubboBootstrap extends GenericEventListener {
      * Start the bootstrap
      */
     public DubboBootstrap start() {
+        // cas保证dubbo容器不重复启动
         if (started.compareAndSet(false, true)) {
+            // 初始化dubbo容器
             initialize();
             if (logger.isInfoEnabled()) {
                 logger.info(NAME + " is starting...");
             }
             // 1. export Dubbo Services
+            // 暴露Dubbo服务
             exportServices();
 
             // Not only provider register
             if (!isOnlyRegisterProvider() || hasExportedServices()) {
                 // 2. export MetadataService
+                // 暴露元数据
                 exportMetadataService();
                 //3. Register the local ServiceInstance if required
+                // 注册服务实例
                 registerServiceInstance();
             }
 
+            // 处理reference
             referServices();
 
             if (logger.isInfoEnabled()) {

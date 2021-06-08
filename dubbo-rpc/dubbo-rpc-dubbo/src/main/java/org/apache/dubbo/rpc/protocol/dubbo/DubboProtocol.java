@@ -231,8 +231,12 @@ public class DubboProtocol extends AbstractProtocol {
     }
 
     private boolean isClientSide(Channel channel) {
+        // 远程地址
         InetSocketAddress address = channel.getRemoteAddress();
+        // 连接url
         URL url = channel.getUrl();
+        // 注册的端口与远程端口相同且注册的ip和远程ip相同
+        // 说明本身非远程，即为客户端
         return url.getPort() == address.getPort() &&
                 NetUtils.filterLocalHost(channel.getUrl().getIp())
                         .equals(NetUtils.filterLocalHost(address.getAddress().getHostAddress()));

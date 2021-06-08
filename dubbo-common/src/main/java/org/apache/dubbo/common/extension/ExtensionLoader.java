@@ -107,8 +107,11 @@ public class ExtensionLoader<T> {
 
     private Map<String, IllegalStateException> exceptions = new ConcurrentHashMap<>();
 
+    // META-INF/dubbo/internal/
     private static LoadingStrategy DUBBO_INTERNAL_STRATEGY =  () -> DUBBO_INTERNAL_DIRECTORY;
+    // META-INF/dubbo/
     private static LoadingStrategy DUBBO_STRATEGY = () -> DUBBO_DIRECTORY;
+    // META-INF/services/
     private static LoadingStrategy SERVICES_STRATEGY = () -> SERVICES_DIRECTORY;
 
     private static LoadingStrategy[] strategies = new LoadingStrategy[] { DUBBO_INTERNAL_STRATEGY, DUBBO_STRATEGY, SERVICES_STRATEGY };
@@ -128,6 +131,12 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
+        /*
+        扩展点合法性判断
+        1. 扩展点不能为空（否则扩展啥）
+        2. 扩展点应该是接口；SPI的机制
+        3. 必须通过SPI注解来确定扩展点真正加载的具体类
+         */
         if (type == null) {
             throw new IllegalArgumentException("Extension type == null");
         }
@@ -596,23 +605,28 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     private T createExtension(String name) {
+        // 获取name配置名对应的扩展点实现类
         Class<?> clazz = getExtensionClasses().get(name);
         if (clazz == null) {
             throw findException(name);
         }
         try {
+            // 从已创建的实例缓存中查询
             T instance = (T) EXTENSION_INSTANCES.get(clazz);
             if (instance == null) {
                 EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
+            // 依赖注入，如果扩展点实现依赖其他扩展点，则需要通过setter方法注入
             injectExtension(instance);
+            // wrapper类代理
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
             if (CollectionUtils.isNotEmpty(wrapperClasses)) {
                 for (Class<?> wrapperClass : wrapperClasses) {
                     instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
                 }
             }
+            // 初始化一些dubbo组件
             initExtension(instance);
             return instance;
         } catch (Throwable t) {
@@ -707,11 +721,13 @@ public class ExtensionLoader<T> {
     }
 
     private Map<String, Class<?>> getExtensionClasses() {
+        // 从配置文件中加载的所有扩展点类缓存中查询
         Map<String, Class<?>> classes = cachedClasses.get();
         if (classes == null) {
             synchronized (cachedClasses) {
                 classes = cachedClasses.get();
                 if (classes == null) {
+                    // 加载配置文件
                     classes = loadExtensionClasses();
                     cachedClasses.set(classes);
                 }
@@ -724,8 +740,10 @@ public class ExtensionLoader<T> {
      * synchronized in getExtensionClasses
      * */
     private Map<String, Class<?>> loadExtensionClasses() {
+        // 1. 加载并缓存默认扩展点实现
         cacheDefaultExtensionName();
 
+        // 2. 从配置文件中加载
         Map<String, Class<?>> extensionClasses = new HashMap<>();
 
         for (LoadingStrategy strategy : strategies) {
@@ -740,11 +758,13 @@ public class ExtensionLoader<T> {
      * extract and cache default extension name if exists
      */
     private void cacheDefaultExtensionName() {
+        // 获取扩展点接口上的SPI注解，SPI注解只能用在接口上
         final SPI defaultAnnotation = type.getAnnotation(SPI.class);
         if (defaultAnnotation == null) {
             return;
         }
 
+        // 获取SPI接口上的默认扩展点实现方式
         String value = defaultAnnotation.value();
         if ((value = value.trim()).length() > 0) {
             String[] names = NAME_SEPARATOR.split(value);
@@ -849,11 +869,16 @@ public class ExtensionLoader<T> {
                     type + ", class line: " + clazz.getName() + "), class "
                     + clazz.getName() + " is not subtype of interface.");
         }
+        // 缓存标注自适应实现类
         if (clazz.isAnnotationPresent(Adaptive.class)) {
             cacheAdaptiveClass(clazz);
-        } else if (isWrapperClass(clazz)) {
+        }
+        // 缓存Wrapper代理类
+        else if (isWrapperClass(clazz)) {
             cacheWrapperClass(clazz);
-        } else {
+        }
+        //
+        else {
             clazz.getConstructor();
             if (StringUtils.isEmpty(name)) {
                 name = findAnnotationName(clazz);
