@@ -286,11 +286,13 @@ public class DubboProtocol extends AbstractProtocol {
         URL url = invoker.getUrl();
 
         // export service.
+        // 在本地缓存exporterMap中进行key-value保存
         String key = serviceKey(url);
         DubboExporter<T> exporter = new DubboExporter<T>(invoker, key, exporterMap);
         exporterMap.put(key, exporter);
 
         //export an stub service for dispatching event
+        // 注册一个存根方法（类似于降级）
         Boolean isStubSupportEvent = url.getParameter(STUB_EVENT_KEY, DEFAULT_STUB_EVENT);
         Boolean isCallbackservice = url.getParameter(IS_CALLBACK_SERVICE, false);
         if (isStubSupportEvent && !isCallbackservice) {
@@ -306,7 +308,9 @@ public class DubboProtocol extends AbstractProtocol {
             }
         }
 
+        // 开启server服务（Dubbo协议默认netty实现）
         openServer(url);
+        // 处理序列化优化类
         optimizeSerialization(url);
 
         return exporter;

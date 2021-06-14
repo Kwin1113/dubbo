@@ -705,13 +705,13 @@ public class DubboBootstrap extends GenericEventListener {
                 logger.info(NAME + " is starting...");
             }
             // 1. export Dubbo Services
-            // 暴露Dubbo服务
+            // 导出Dubbo服务
             exportServices();
 
             // Not only provider register
             if (!isOnlyRegisterProvider() || hasExportedServices()) {
                 // 2. export MetadataService
-                // 暴露元数据
+                // 导出元数据
                 exportMetadataService();
                 //3. Register the local ServiceInstance if required
                 // 注册服务实例
