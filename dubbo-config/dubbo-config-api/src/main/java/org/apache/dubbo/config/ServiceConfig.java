@@ -298,6 +298,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls() {
+        // 往Repository中注册service和provider
         ServiceRepository repository = ApplicationModel.getServiceRepository();
         ServiceDescriptor serviceDescriptor = repository.registerService(getInterfaceClass());
         repository.registerProvider(
@@ -313,6 +314,8 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
         // 遍历所有配置的协议，往所有注册中心上注册
         for (ProtocolConfig protocolConfig : protocols) {
+            // 根据protocol的contextpath和service的path group version拼接自定义的pathKey同样注册到repository的service
+            // 格式为group/contextpath/name:version
             String pathKey = URL.buildKey(getContextPath(protocolConfig)
                     .map(p -> p + "/" + path)
                     .orElse(path), group, version);

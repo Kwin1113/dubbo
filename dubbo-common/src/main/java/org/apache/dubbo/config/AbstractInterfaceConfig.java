@@ -206,10 +206,12 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         Assert.notNull(interfaceClass, new IllegalStateException("interface not allow null!"));
 
         // to verify interfaceClass is an interface
+        // ref必须是接口类
         if (!interfaceClass.isInterface()) {
             throw new IllegalStateException("The interface class " + interfaceClass + " is not a interface!");
         }
         // check if methods exist in the remote service interface
+        // 检查方法配置是否合法（远程service是否提供该方法）
         if (CollectionUtils.isNotEmpty(methods)) {
             for (MethodConfig methodBean : methods) {
                 methodBean.setService(interfaceClass.getName());

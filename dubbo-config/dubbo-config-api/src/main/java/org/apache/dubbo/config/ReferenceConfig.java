@@ -189,15 +189,19 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             bootstrap.init();
         }
 
+        // 校验一堆配置
         checkAndUpdateSubConfigs();
 
+        // 检查stub配置
         checkStubAndLocal(interfaceClass);
+        // 检查mock字段配置
         ConfigValidationUtils.checkMock(interfaceClass, this);
 
         Map<String, String> map = new HashMap<String, String>();
         map.put(SIDE_KEY, CONSUMER_SIDE);
 
         ReferenceConfigBase.appendRuntimeParameters(map);
+        // 泛化调用配置
         if (!ProtocolUtils.isGeneric(generic)) {
             String revision = Version.getVersion(interfaceClass, version);
             if (revision != null && revision.length() > 0) {
@@ -221,6 +225,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         AbstractConfig.appendParameters(map, consumer);
         AbstractConfig.appendParameters(map, this);
         Map<String, AsyncMethodInfo> attributes = null;
+        // 方法配置
         if (CollectionUtils.isNotEmpty(getMethods())) {
             attributes = new HashMap<>();
             for (MethodConfig methodConfig : getMethods()) {
@@ -240,6 +245,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             }
         }
 
+        // 注册中心IP
         String hostToRegistry = ConfigUtils.getSystemProperty(DUBBO_IP_TO_REGISTRY);
         if (StringUtils.isEmpty(hostToRegistry)) {
             hostToRegistry = NetUtils.getLocalHost();
@@ -250,8 +256,10 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
 
         serviceMetadata.getAttachments().putAll(map);
 
+        // 创建代理类
         ref = createProxy(map);
 
+        // 更新元数据和repositoty中注册的consumer
         serviceMetadata.setTarget(ref);
         serviceMetadata.addAttribute(PROXY_CLASS_REF, ref);
         ConsumerModel consumerModel = repository.lookupReferredService(serviceMetadata.getServiceKey());
@@ -261,11 +269,13 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         initialized = true;
 
         // dispatch a ReferenceConfigInitializedEvent since 2.7.4
+        // 引用完成发布事件
         dispatch(new ReferenceConfigInitializedEvent(this, invoker));
     }
 
     @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
     private T createProxy(Map<String, String> map) {
+        // injvm本地引用服务
         if (shouldJvmRefer(map)) {
             URL url = new URL(LOCAL_PROTOCOL, LOCALHOST_VALUE, 0, interfaceClass.getName()).addParameters(map);
             invoker = REF_PROTOCOL.refer(interfaceClass, url);
@@ -273,6 +283,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 logger.info("Using injvm service " + interfaceClass.getName());
             }
         } else {
+            // 处理url配置
             urls.clear();
             if (url != null && url.length() > 0) { // user specified URL, could be peer-to-peer address, or register center's address.
                 String[] us = SEMICOLON_SPLIT_PATTERN.split(url);
@@ -310,9 +321,11 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             }
 
             if (urls.size() == 1) {
+                // 单个引用url则直接获取一个invoker，默认dubbo协议
                 invoker = REF_PROTOCOL.refer(interfaceClass, urls.get(0));
             } else {
                 List<Invoker<?>> invokers = new ArrayList<Invoker<?>>();
+                // 获取最后一个注册中心地址
                 URL registryURL = null;
                 for (URL url : urls) {
                     invokers.add(REF_PROTOCOL.refer(interfaceClass, url));
@@ -320,6 +333,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                         registryURL = url; // use last registry url
                     }
                 }
+                // 获取到的invoker作为集合directory，通过cluster容错策略整合成一个invoker
                 if (registryURL != null) { // registry url is available
                     // for multi-subscription scenario, use 'zone-aware' policy by default
                     URL u = registryURL.addParameterIfAbsent(CLUSTER_KEY, ZoneAwareCluster.NAME);
@@ -331,6 +345,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             }
         }
 
+        // 检查provider是否存在至少一个实例提供服务
         if (shouldCheck() && !invoker.isAvailable()) {
             throw new IllegalStateException("Failed to check the status of the service "
                     + interfaceName
@@ -357,6 +372,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             metadataService.publishServiceDefinition(consumerURL);
         }
         // create service proxy
+        // 通过proxyFactory创建代理类返回
         return (T) PROXY_FACTORY.getProxy(invoker);
     }
 
@@ -368,10 +384,14 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         if (StringUtils.isEmpty(interfaceName)) {
             throw new IllegalStateException("<dubbo:reference interface=\"\" /> interface not allow null!");
         }
+        // 填充默认配置
         completeCompoundConfigs();
         // get consumer's global configuration
+        // 如果consumer配置为空的话设置默认配置
         checkDefault();
+        // 初始化变量
         this.refresh();
+        // 泛化调用配置
         if (getGeneric() == null && getConsumer() != null) {
             setGeneric(getConsumer().getGeneric());
         }
@@ -384,10 +404,12 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e.getMessage(), e);
             }
+            // 检查配置文件中的方法配置是否合法
             checkInterfaceAndMethods(interfaceClass, getMethods());
         }
 
         //init serivceMetadata
+        // 初始化service元数据
         serviceMetadata.setVersion(version);
         serviceMetadata.setGroup(group);
         serviceMetadata.setDefaultGroup(group);
@@ -396,6 +418,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         // TODO, uncomment this line once service key is unified
         serviceMetadata.setServiceKey(URL.buildKey(interfaceName, group, version));
 
+        // 同serviceConfig一样，往repository注册，注册到consumer里
         ServiceRepository repository = ApplicationModel.getServiceRepository();
         ServiceDescriptor serviceDescriptor = repository.registerService(interfaceClass);
         repository.registerConsumer(
@@ -406,6 +429,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 serviceMetadata);
 
         resolveFile();
+        // 校验配置文件是否都合法
         ConfigValidationUtils.validateReferenceConfig(this);
         appendParameters();
     }

@@ -289,16 +289,19 @@ public class ConfigValidationUtils {
     }
 
     public static void validateAbstractInterfaceConfig(AbstractInterfaceConfig config) {
+        // 检查字段合法
         checkName(LOCAL_KEY, config.getLocal());
         checkName("stub", config.getStub());
         checkMultiName("owner", config.getOwner());
 
+        // 检查扩展点输入值的合法性
         checkExtension(ProxyFactory.class, PROXY_KEY, config.getProxy());
         checkExtension(Cluster.class, CLUSTER_KEY, config.getCluster());
         checkMultiExtension(Filter.class, FILE_KEY, config.getFilter());
         checkMultiExtension(InvokerListener.class, LISTENER_KEY, config.getListener());
         checkNameHasSymbol(LAYER_KEY, config.getLayer());
 
+        // 校验方法配置是否合法
         List<MethodConfig> methods = config.getMethods();
         if (CollectionUtils.isNotEmpty(methods)) {
             methods.forEach(ConfigValidationUtils::validateMethodConfig);
@@ -336,13 +339,17 @@ public class ConfigValidationUtils {
     }
 
     public static void validateReferenceConfig(ReferenceConfig config) {
+        // 检查reference监听器是否存在
         checkMultiExtension(InvokerListener.class, "listener", config.getListener());
+        // 检查字段
         checkKey(VERSION_KEY, config.getVersion());
         checkKey(GROUP_KEY, config.getGroup());
         checkName(CLIENT_KEY, config.getClient());
 
+        // 校验一系列接口配置是否合法
         validateAbstractInterfaceConfig(config);
 
+        // 校验注册中心是否合法
         List<RegistryConfig> registries = config.getRegistries();
         if (registries != null) {
             for (RegistryConfig registry : registries) {
@@ -350,6 +357,7 @@ public class ConfigValidationUtils {
             }
         }
 
+        // 校验consumer配置是否合法
         ConsumerConfig consumerConfig = config.getConsumer();
         if (consumerConfig != null) {
             validateConsumerConfig(consumerConfig);
@@ -480,10 +488,12 @@ public class ConfigValidationUtils {
     }
 
     public static void validateMethodConfig(MethodConfig config) {
+        // 校验配置的合法性
         checkExtension(LoadBalance.class, LOADBALANCE_KEY, config.getLoadbalance());
         checkParameterName(config.getParameters());
         checkMethodName("name", config.getName());
 
+        // 检查mock降级输入合法性
         String mock = config.getMock();
         if (StringUtils.isNotEmpty(mock)) {
             if (mock.startsWith(RETURN_PREFIX) || mock.startsWith(THROW_PREFIX + " ")) {
