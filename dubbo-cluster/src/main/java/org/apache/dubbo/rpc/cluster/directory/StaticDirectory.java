@@ -101,6 +101,7 @@ public class StaticDirectory<T> extends AbstractDirectory<T> {
     protected List<Invoker<T>> doList(Invocation invocation) throws RpcException {
         List<Invoker<T>> finalInvokers = invokers;
         if (routerChain != null) {
+            // 路由规则进行进一步筛选
             try {
                 finalInvokers = routerChain.route(getConsumerUrl(), invocation);
             } catch (Throwable t) {

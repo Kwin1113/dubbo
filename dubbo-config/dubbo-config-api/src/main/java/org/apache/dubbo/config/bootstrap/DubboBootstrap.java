@@ -510,16 +510,22 @@ public class DubboBootstrap extends GenericEventListener {
         // 用注册中心代替配置中心
         useRegistryAsConfigCenterIfNecessary();
 
+        // 开启元数据中心
         startMetadataReport();
 
+        // 加载远程配置 注册中心/协议配置
         loadRemoteConfigs();
 
+        // 检查全局配置
         checkGlobalConfigs();
 
+        // 初始化MetadataService
         initMetadataService();
 
+        // 初始化MetadataServiceExport
         initMetadataServiceExporter();
 
+        // 将本身注册为事件监听器
         initEventListener();
 
         if (logger.isInfoEnabled()) {
@@ -556,6 +562,7 @@ public class DubboBootstrap extends GenericEventListener {
         Collection<ConfigCenterConfig> configCenters = configManager.getConfigCenters();
 
         if (CollectionUtils.isNotEmpty(configCenters)) {
+            // 组合所有注册中心
             CompositeDynamicConfiguration compositeDynamicConfiguration = new CompositeDynamicConfiguration();
             for (ConfigCenterConfig configCenter : configCenters) {
                 configCenter.refresh();
@@ -817,10 +824,13 @@ public class DubboBootstrap extends GenericEventListener {
     /* serve for builder apis, end */
 
     private DynamicConfiguration prepareEnvironment(ConfigCenterConfig configCenter) {
+        // 检查地址/协议等是否合法
         if (configCenter.isValid()) {
+            // 避免重复初始化同一个注册中心
             if (!configCenter.checkOrUpdateInited()) {
                 return null;
             }
+            // 根据配置中心的url获取动态配置中心（获取/发布/监听配置）
             DynamicConfiguration dynamicConfiguration = getDynamicConfiguration(configCenter.toUrl());
             String configContent = dynamicConfiguration.getProperties(configCenter.getConfigFile(), configCenter.getGroup());
 
@@ -1087,11 +1097,13 @@ public class DubboBootstrap extends GenericEventListener {
         ApplicationConfig application = configManager
                 .getApplication()
                 .orElseGet(() -> {
+                    // application的初始化
                     ApplicationConfig applicationConfig = new ApplicationConfig();
                     configManager.setApplication(applicationConfig);
                     return applicationConfig;
                 });
 
+        // 初始化配置
         application.refresh();
         return application;
     }

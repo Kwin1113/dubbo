@@ -67,6 +67,7 @@ public class ConfigManager extends LifecycleAdapter implements FrameworkExt {
 
     public static final String NAME = "config";
 
+    // service -> [id -> config]
     private final Map<String, Map<String, AbstractConfig>> configsCache = newMap();
 
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
@@ -337,6 +338,7 @@ public class ConfigManager extends LifecycleAdapter implements FrameworkExt {
     public void refreshAll() {
         write(() -> {
             // refresh all configs here,
+            // 初始化所有配置
             getApplication().ifPresent(ApplicationConfig::refresh);
             getMonitor().ifPresent(MonitorConfig::refresh);
             getModule().ifPresent(ModuleConfig::refresh);
